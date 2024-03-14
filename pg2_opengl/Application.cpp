@@ -96,6 +96,8 @@ Application::Application()
 	int height = 1600;
 	camera = std::make_unique<Camera>();
 
+	std::cout << "Started\n";
+
 	glfwSetErrorCallback(my_glfw_callback);
 
 	if (!glfwInit())
@@ -157,18 +159,25 @@ Application::Application()
 
 Application::~Application()
 {
-	glDeleteShader(vertex_shader);
-	glDeleteShader(fragment_shader);
+	for (auto shader : this->shaders) {
+		glDeleteShader(shader);
+	}
 	glDeleteProgram(shader_program);
+
+	glDeleteProgram(sky_shader_program);
 
 	delete window;
 	glfwTerminate();
 }
 
-void Application::create_shaders(){
-	this->vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+void Application::create_shaders(std::string name, GLuint& active_shader_program){
+	GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+	shaders.push_back(vertex_shader);
+
 	std::vector<char> shader_source;
-	if (LoadShader("basic_shader.vert", shader_source) == S_OK)
+	std::string vert_name = name + ".vert";
+	std::string frag_name = name + ".frag";
+	if (LoadShader(vert_name, shader_source) == S_OK)
 	{
 		const char* tmp = static_cast<const char*>(&shader_source[0]);
 		glShaderSource(vertex_shader, 1, &tmp, nullptr);
@@ -176,8 +185,9 @@ void Application::create_shaders(){
 	}
 	CheckShader(vertex_shader);
 
-	this->fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-	if (LoadShader("basic_shader.frag", shader_source) == S_OK)
+	GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+	shaders.push_back(fragment_shader);
+	if (LoadShader(frag_name, shader_source) == S_OK)
 	{
 		const char* tmp = static_cast<const char*>(&shader_source[0]);
 		glShaderSource(fragment_shader, 1, &tmp, nullptr);
@@ -185,61 +195,57 @@ void Application::create_shaders(){
 	}
 	CheckShader(fragment_shader);
 
-	this->shader_program = glCreateProgram();
-	glAttachShader(shader_program, vertex_shader);
-	glAttachShader(shader_program, fragment_shader);
-	glLinkProgram(shader_program);
-
-	glUseProgram(shader_program);
+	active_shader_program = glCreateProgram();
+	glAttachShader(active_shader_program, vertex_shader);
+	glAttachShader(active_shader_program, fragment_shader);
+	glLinkProgram(active_shader_program);
 }
 
 void Application::load_data() {
-	Texture3f image = Texture3f("../../../data/denoise/color_2spp.exr"); // linear HDR image
-	const int width = image.width();
-	const int height = image.height();
+	//Texture3f image = Texture3f("../../../data/denoise/color_2spp.exr"); // linear HDR image
+	//const int width = image.width();
+	//const int height = image.height();
 
-	std::cout << width;
+	//std::cout << width;
 
-	this->index_count = 3;
+	//this->index_count = 3;
 
-	// setup vertex buffer as AoS (array of structures)
-	GLfloat vertices[] =
-	{
-		-0.9f, 0.9f, 0.0f,  0.0f, 1.0f, // vertex 0 : p0.x, p0.y, p0.z, t0.u, t0.v
-		0.9f, 0.9f, 0.0f,   1.0f, 1.0f, // vertex 1 : p1.x, p1.y, p1.z, t1.u, t1.v
-		0.0f, -0.9f, 0.0f,  0.5f, 0.0f  // vertex 2 : p2.x, p2.y, p2.z, t2.u, t2.v
-	};
-	const int no_vertices = 3;
-	const int vertex_stride = sizeof(vertices) / no_vertices;
-	// optional index array
-	unsigned int indices[] =
-	{
-		0, 1, 2
-	};
+	//// setup vertex buffer as AoS (array of structures)
+	//GLfloat vertices[] =
+	//{
+	//	-0.9f, 0.9f, 0.0f,  0.0f, 1.0f, // vertex 0 : p0.x, p0.y, p0.z, t0.u, t0.v
+	//	0.9f, 0.9f, 0.0f,   1.0f, 1.0f, // vertex 1 : p1.x, p1.y, p1.z, t1.u, t1.v
+	//	0.0f, -0.9f, 0.0f,  0.5f, 0.0f  // vertex 2 : p2.x, p2.y, p2.z, t2.u, t2.v
+	//};
+	//const int no_vertices = 3;
+	//const int vertex_stride = sizeof(vertices) / no_vertices;
+	//// optional index array
+	//unsigned int indices[] =
+	//{
+	//	0, 1, 2
+	//};
 
-	this->vao = 0;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	this->vbo = 0;
-	glGenBuffers(1, &vbo); // generate vertex buffer object (one of OpenGL objects) and get the unique ID corresponding to that buffer
-	glBindBuffer(GL_ARRAY_BUFFER, vbo); // bind the newly created buffer to the GL_ARRAY_BUFFER target
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // copies the previously defined vertex data into the buffer's memory
-	// vertex position
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertex_stride, 0);
-	glEnableVertexAttribArray(0);
-	// vertex texture coordinates
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertex_stride, (void*)(sizeof(float) * 3));
-	glEnableVertexAttribArray(1);
+	//this->vao = 0;
+	//glGenVertexArrays(1, &vao);
+	//glBindVertexArray(vao);
+	//this->vbo = 0;
+	//glGenBuffers(1, &vbo); // generate vertex buffer object (one of OpenGL objects) and get the unique ID corresponding to that buffer
+	//glBindBuffer(GL_ARRAY_BUFFER, vbo); // bind the newly created buffer to the GL_ARRAY_BUFFER target
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); // copies the previously defined vertex data into the buffer's memory
+	//// vertex position
+	//glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertex_stride, 0);
+	//glEnableVertexAttribArray(0);
+	//// vertex texture coordinates
+	//glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertex_stride, (void*)(sizeof(float) * 3));
+	//glEnableVertexAttribArray(1);
 
-	GLuint ebo = 0; // optional buffer of indices
-	glGenBuffers(1, &ebo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	//GLuint ebo = 0; // optional buffer of indices
+	//glGenBuffers(1, &ebo);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 }
 
-void Application::load_model() {
-	//std::string file_name = "../../../data/adjacent_triangles.obj";
-	std::string file_name = "../../../data/piece_02/piece_02.obj";
+void Application::load_model(std::string file_name, GLuint& vao, GLuint& vbo, int& index_count) {
 	SceneGraph scene;
 	MaterialLibrary materials;
 
@@ -356,17 +362,42 @@ void Application::check_viewport() {
 
 	Tx = camera->get_view_matrix() * Tx;
 	Tx = camera->get_projection_matrix() * Tx;
-	//Tx = Tx * camera->get_viewport_matrix();
 
 	SetMatrix4x4(this->shader_program, Tx.data(), "P");
 }
 
+void Application::draw_skydome() {
+
+	glUseProgram(this->sky_shader_program);
+
+	// Prepare MVP matrix
+	Matrix4x4 Tx = camera->get_view_matrix();
+	Tx.set(0, 3, 0);
+	Tx.set(1, 3, 0);
+	Tx.set(2, 3, 0);
+	Tx = camera->get_projection_matrix() * Tx;
+
+	SetMatrix4x4(this->sky_shader_program, Tx.data(), "P");
+
+	// Prepare depth
+	glStencilFunc(GL_ALWAYS, 0, 0xFF);
+
+	glDepthFunc(GL_LEQUAL);
+
+	glBindVertexArray(sky_vao);
+	glDrawArrays(GL_TRIANGLES, 0, sky_index_count);
+
+	glDepthFunc(GL_LESS);
+}
+
 void Application::load_textures() {
-	Texture3f map = Texture3f("../../../data/maps/lebombo_irradiance_map.exr"); // linear HDR image
+	Texture3f map = Texture3f("C:/Repos/pg2/data/maps/lebombo_irradiance_map.exr"); // linear HDR image
 	Color3f* data = map.data();
 
 	if (data)
 	{
+		unsigned int irradiance_map_texture_id;
+		glActiveTexture(GL_TEXTURE1);
 		glGenTextures(1, &irradiance_map_texture_id);
 		glBindTexture(GL_TEXTURE_2D, irradiance_map_texture_id);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, map.width(), map.height(), 0, GL_RGB, GL_FLOAT, data);
@@ -381,14 +412,51 @@ void Application::load_textures() {
 		fprintf(stderr, "Failed to load HDR image.");
 		exit(EXIT_FAILURE);
 	}
+
+	SetSampler(this->shader_program, 1, "texture_0");
+}
+
+void Application::load_skydome_texture() {
+	Texture3f map = Texture3f("C:/Repos/pg2/data/maps/lebombo_prefiltered_env_map_001_2048.exr"); // linear HDR image
+	Color3f* data = map.data();
+
+	if (data)
+	{
+		unsigned int skydome_texture_id;
+		glActiveTexture(GL_TEXTURE0);
+		glGenTextures(1, &skydome_texture_id);
+		glBindTexture(GL_TEXTURE_2D, skydome_texture_id);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, map.width(), map.height(), 0, GL_RGB, GL_FLOAT, data);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+	else
+	{
+		fprintf(stderr, "Failed to load HDR image.");
+		exit(EXIT_FAILURE);
+	}
+
+	SetSampler(this->sky_shader_program, 0, "texture_0");
 }
 
 void Application::run()
 {
-	load_model();
+	//std::string file_name = "../../../data/adjacent_triangles.obj";
+	load_model("../../../data/sphere/geosphere.obj", sky_vao, sky_vbo, sky_index_count);
+	//model_index_count = sky_index_count;
+	//model_vao = sky_vao;
+	load_model("../../../data/piece_02/piece_02.obj", model_vao, model_vbo, model_index_count);
+	
+	create_shaders("sky_shader", this->sky_shader_program);
+	create_shaders("basic_shader", this->shader_program);
+	
+	glUseProgram(sky_shader_program);
+	load_skydome_texture();
+	glUseProgram(shader_program);
 	load_textures();
-	//load_data();
-	create_shaders();
 
 	// main loop
 	while (!glfwWindowShouldClose(window))
@@ -396,15 +464,19 @@ void Application::run()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f); // state setting function
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // state using function
 
-		check_viewport();
+		draw_skydome();
 
-		glBindVertexArray(vao);
-		glDrawArrays(GL_TRIANGLES, 0, index_count);
+		glUseProgram(shader_program);
+		check_viewport();
+		glBindVertexArray(model_vao);
+		glDrawArrays(GL_TRIANGLES, 0,model_index_count);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
 
-	glDeleteBuffers(1, &vbo);
-	glDeleteVertexArrays(1, &vao);
+	glDeleteBuffers(1, &sky_vbo);
+	glDeleteVertexArrays(1, &sky_vao);
+	glDeleteBuffers(1, &model_vbo);
+	glDeleteVertexArrays(1, &model_vao);
 }

@@ -24,6 +24,7 @@ class Camera
 
 public:
 	Vector3 eye = Vector3(17.0f, -29.0f, 8.0f);
+	//Vector3 eye = Vector3(2.0f, 4.0f, 1.0f);
 	Vector3 up = Vector3(0.0f, 0.0f, 1.0f);
 	Vector3 view_dir = Vector3(.0f, 1.0f, 0.0f);
 

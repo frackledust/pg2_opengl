@@ -7,29 +7,33 @@ class Application
 {
 public:
 	GLFWwindow* window;
-	GLuint vertex_shader;
-	GLuint fragment_shader;
 	GLuint shader_program;
-	GLuint vao;
-	GLuint vbo;
+	GLuint sky_shader_program;
+	std::vector<GLuint> shaders;
+
+	GLuint model_vao;
+	GLuint model_vbo;
+	int model_index_count;
+
+	GLuint sky_vao;
+	GLuint sky_vbo;
+	int sky_index_count;
 
 	std::unique_ptr<Camera> camera;
 	bool first_mouse = true;
 	float last_mouse_x;
 	float last_mouse_y;
 
-	int index_count;
-
-	unsigned int irradiance_map_texture_id;
-
 	Application();
 	~Application();
 
-	void create_shaders();
+	void create_shaders(std::string name, GLuint& active_shader_program);
 	void load_data();
 	void check_viewport();
-	void load_model();
+	void load_model(std::string file_name, GLuint& vao, GLuint& vbo, int& index_count);
 	void load_textures();
+	void draw_skydome();
+	void load_skydome_texture();
 	void run();
 
 	static void cursor_pos_callback(GLFWwindow* window, double mouseXPos, double mouseYPos);

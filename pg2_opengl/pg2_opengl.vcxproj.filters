@@ -76,5 +76,11 @@
     <None Include="basic_shader.frag">
       <Filter>Source Files\opengl</Filter>
     </None>
+    <None Include="sky_shader.vert">
+      <Filter>Source Files\opengl</Filter>
+    </None>
+    <None Include="sky_shader.frag">
+      <Filter>Source Files\opengl</Filter>
+    </None>
   </ItemGroup>
 </Project>

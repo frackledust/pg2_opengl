@@ -4,8 +4,7 @@
 layout ( location = 0 ) out vec4 FragColor;
 
 const float PI = 3.14159265359;
-in vec3 world_normal, frag_color;
-in vec4 world_position;
+in vec3 world_normal;
 
 uniform sampler2D texture_0;
 void main( void )
@@ -19,8 +18,6 @@ void main( void )
 	phi = phi / (2 * PI);
 	vec2 irradiance_coords = vec2(phi, theta);
 	vec4 irradiance_color = texture(texture_0, irradiance_coords);
-	vec4 diffuse_color = irradiance_color  * vec4(frag_color / PI, 1.0f);
 
-	FragColor = diffuse_color;
-	//FragColor = vec4(world_normal, 1);
+	FragColor = irradiance_color;
 }
