@@ -361,9 +361,22 @@ void Application::check_viewport() {
 	};
 
 	Tx = camera->get_view_matrix() * Tx;
+
+	Vector3 camera_pos = camera->eye;
+	SetVector3(this->shader_program, &camera_pos.data[0], "_camera_pos");
+
 	Tx = camera->get_projection_matrix() * Tx;
 
-	SetMatrix4x4(this->shader_program, Tx.data(), "P");
+	SetMatrix4x4(this->shader_program, Tx.data(), "_P");
+
+	Matrix4x4 Mx = {
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	};
+
+	SetMatrix4x4(this->shader_program, Mx.data(), "_model_matrix");
 }
 
 void Application::draw_skydome() {
@@ -394,18 +407,26 @@ void Application::load_textures() {
 	Texture3f map = Texture3f("C:/Repos/pg2/data/maps/lebombo_irradiance_map.exr"); // linear HDR image
 	Color3f* data = map.data();
 
+	unsigned int texture_id;
 	if (data)
 	{
-		unsigned int irradiance_map_texture_id;
 		glActiveTexture(GL_TEXTURE1);
-		glGenTextures(1, &irradiance_map_texture_id);
-		glBindTexture(GL_TEXTURE_2D, irradiance_map_texture_id);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, map.width(), map.height(), 0, GL_RGB, GL_FLOAT, data);
+		glGenTextures(1, &texture_id);
+		glBindTexture(GL_TEXTURE_2D, texture_id);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, map.width(), map.height(), 0, GL_RGB, GL_FLOAT, data);
+		
+		//glGenerateMipmap(GL_TEXTURE_2D);
+		//glBindTexture(GL_TEXTURE_2D, 0);
+		//GLuint handle = glGetTextureHandleARB(irradiance_map_texture_id);
+		//glMakeTextureHandleResidentARB(handle);
+
+		SetSampler(this->shader_program, 1, "texture_0");
 	}
 	else
 	{
@@ -413,7 +434,55 @@ void Application::load_textures() {
 		exit(EXIT_FAILURE);
 	}
 
-	SetSampler(this->shader_program, 1, "texture_0");
+	map = Texture3f("C:/Repos/pg2/data/maps/brdf_integration_map_ct_ggx.exr"); // linear HDR image
+	data = map.data();
+
+	if (data)
+	{
+		glActiveTexture(GL_TEXTURE2);
+		glGenTextures(1, &texture_id);
+		glBindTexture(GL_TEXTURE_2D, texture_id);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, map.width(), map.height(), 0, GL_RGB, GL_FLOAT, data);
+
+		SetSampler(this->shader_program, 2, "texture_1");
+	}
+	else
+	{
+		fprintf(stderr, "Failed to load HDR image.");
+		exit(EXIT_FAILURE);
+	}
+
+	map = Texture3f("C:/Repos/pg2/data/maps/lebombo_prefiltered_env_map_001_2048.exr"); // linear HDR image
+	data = map.data();
+
+	if (data)
+	{
+		glActiveTexture(GL_TEXTURE3);
+		glGenTextures(1, &texture_id);
+		glBindTexture(GL_TEXTURE_2D, texture_id);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, map.width(), map.height(), 0, GL_RGB, GL_FLOAT, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		SetSampler(this->shader_program, 3, "texture_2");
+	}
+	else
+	{
+		fprintf(stderr, "Failed to load HDR image.");
+		exit(EXIT_FAILURE);
+	}
 }
 
 void Application::load_skydome_texture() {
