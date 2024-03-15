@@ -3,6 +3,9 @@
 
 #include "vector3.h"
 #include "pgmath.h"
+#include "color.h"
+#include "texture.h"
+
 
 bool check_gl( const GLenum error = glGetError() );
 void glfw_callback( const int error, const char * description );
@@ -21,5 +24,7 @@ int tutorial_6();
 int tutorial_7( const std::string & file_name );
 int tutorial_8();
 
+Color3f sample_normal_direction(Texture3f texture, float phi_normal, float theta_normal);
+int generate_irradiance_map(const std::string& texture_path);
 
 #endif

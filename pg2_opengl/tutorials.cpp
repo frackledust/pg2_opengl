@@ -7,6 +7,7 @@
 #include "texture.h"
 #include "objloader.h"
 #include <OpenImageDenoise/oidn.h>
+#include <iostream>
 
 /* OpenGL check state */
 bool check_gl( const GLenum error )
@@ -481,3 +482,77 @@ int tutorial_8()
 
 	return 0;
 }
+
+Color3f sample_normal_direction(Texture3f texture, float phi_normal, float theta_normal) {
+	Color3f irradiance = Color3f({ 0, 0, 0 });
+
+	Vector3 n = Vector3(sinf(theta_normal) * cos(phi_normal),
+		sinf(theta_normal) * sin(phi_normal),
+		cos(theta_normal));
+
+	n.Normalize();
+	Vector3 o2 = n.orthogonal();
+	o2.Normalize();
+
+	Vector3 o1 = o2.CrossProduct(n);
+	o1.Normalize();
+
+	Matrix3 T = Matrix3x3(o1, o2, n);
+
+	Color3f pixel;
+
+	int sample_count = 10000;
+	for (int i = 0; i < sample_count; i++)
+	{
+		float xi1 = Random();
+		float xi2 = Random();
+		float sample_x = cosf(2 * M_PI * xi1) * sqrtf(1 - xi2);
+		float sample_y = sinf(2 * M_PI * xi1) * sqrtf(1 - xi2);
+		float sample_z = sqrtf(xi2);
+
+		Vector3 sample = Vector3(sample_x, sample_y, sample_z);
+		float pdf = sample.z / M_PI;
+		sample = T * sample;
+
+		float theta_sample = acosf(sample.z);
+
+		float phi_sample = atan2f(sample.y, sample.x);
+		if (sample.y < 0.0f)
+			phi_sample = phi_sample + M_PI * 2;
+		 
+		float x2 = phi_sample / (2.0f * float(M_PI));
+		x2 = x2 * texture.width();
+		x2 = int(x2) % texture.width();
+
+		float y2 = theta_sample / float(M_PI);
+		y2 = y2 * texture.height();
+		y2 = int(y2) % texture.height();
+
+		irradiance += texture.pixel(x2, y2) * (1.0 / M_PI); //* clamp(n.DotProduct(sample), 0.0f, 1.0f) * (1 / pdf);
+	}
+
+	irradiance *= (1.0 / float(sample_count));
+
+	return irradiance;
+}
+int generate_irradiance_map(const std::string& texture_path) {
+	Texture3f texture = Texture3f(texture_path);
+	int width = 64;
+	int height = 32;
+	Texture3f irradiance_map = Texture3f(width, height);
+	for (int i = 0; i < width; i++)
+	{
+		float phi_normal = i * 2.0 * M_PI / width;
+		for (int j = 0; j < height; j++)
+		{
+			float theta_normal = j * M_PI / height;
+			Color3f irradiance = sample_normal_direction(texture, phi_normal, theta_normal);
+			irradiance_map.set_pixel(i, j, irradiance);
+			std::cout << irradiance.data[0] << " " << irradiance.data[1] << " " << irradiance.data[2] << std::endl;
+		}
+	}
+	irradiance_map.Save("../../../data/maps/irradiance_map.exr");
+	return 0;
+}
+
+

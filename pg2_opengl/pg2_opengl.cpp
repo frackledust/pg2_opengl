@@ -14,4 +14,5 @@ int main()
 	//return tutorial_8();
 	auto app = new Application();
 	app->run();
+	//generate_irradiance_map("../../../data/maps/lebombo_prefiltered_env_map_001_2048.exr");
 }
