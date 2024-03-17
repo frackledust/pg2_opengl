@@ -30,7 +30,8 @@ public:
 	void create_shaders(std::string name, GLuint& active_shader_program);
 	void load_data();
 	void check_viewport();
-	void load_model(std::string file_name, GLuint& vao, GLuint& vbo, int& index_count);
+	void create_bindless_material(const MaterialLibrary& materials);
+	void load_model(std::string file_name, GLuint& vao, GLuint& vbo, int& index_count, bool bindless);
 	void load_textures();
 	void draw_skydome();
 	void load_skydome_texture();
@@ -53,5 +54,25 @@ public:
 	{
 		std::array<Vertex, 6> vertices;
 	} dst_triangle;
+
+#pragma pack( push, 1 ) // 1 B alignment
+	struct GLMaterial
+	{
+		Color3f diffuse; // 3 * 4 B
+		GLbyte pad0[4]; // + 4 B = 16 B
+		GLuint64 tex_diffuse_handle{ 0 }; // 1 * 8 B
+		GLbyte pad1[8]; // + 8 B = 16 B
+		Color3f rma; // 3 * 4 B
+		GLbyte pad2[4]; // + 4 B = 16 B
+		GLuint64 tex_rma_handle{ 0 }; // 1 * 8 B
+		GLbyte pad3[8]; // + 8 B = 16 B
+		Color3f normal; // 3 * 4 B
+		GLbyte pad4[4]; // + 4 B = 16 B
+		GLuint64 tex_normal_handle{ 0 }; // 1 * 8 B
+		GLbyte pad5[8]; // + 8 B = 16 B
+	};
+#pragma pack( pop )
+
+
 };
 

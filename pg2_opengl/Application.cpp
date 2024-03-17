@@ -11,6 +11,7 @@
 #include <texture.h>
 #include <iostream>
 
+
 void my_glfw_callback(const int error, const char* description)
 {
 	printf("GLFW Error (%d): %s\n", error, description);
@@ -245,7 +246,90 @@ void Application::load_data() {
 	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 }
 
-void Application::load_model(std::string file_name, GLuint& vao, GLuint& vbo, int& index_count) {
+void create_bindless_texture(GLuint& texture, GLuint64& handle, const int width, const int height, const GLvoid* data)
+{
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture); // bind empty texture object to the target 
+	// set the texture wrapping/filtering options 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// copy data from the host buffer
+	// TODO: BGR format nebo RGB?
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0); // unbind the newly created texture from the target
+	handle = glGetTextureHandleARB(texture); // produces a handle representing the texture in a shader function
+	glMakeTextureHandleResidentARB(handle);
+}
+
+void Application::create_bindless_material(const MaterialLibrary& materials) {
+	GLMaterial* gl_materials = new GLMaterial[materials.size()];
+	int m = 0;
+	for (const auto& material : materials)
+	{
+		auto tex_diffuse = material.second->texture(Map::kDiffuse);
+		if (tex_diffuse)
+		{
+			GLuint id = 0;
+			create_bindless_texture(id, gl_materials[m].tex_diffuse_handle, tex_diffuse->width(), tex_diffuse->height(), tex_diffuse->data());
+			gl_materials[m].diffuse = Color3f({ 1.0f, 1.0f, 1.0f }); // white diffuse color
+		}
+		else
+		{
+			GLuint id = 0;
+			GLubyte data[] = { 255, 255, 255, 255 };
+			create_bindless_texture(id, gl_materials[m].tex_diffuse_handle, 1, 1, data);
+			gl_materials[m].diffuse = material.second->albedo();
+		}
+
+		auto tex_rma = material.second->texture(Map::kRMA);
+		if (tex_rma)
+		{
+			GLuint id = 0;
+			create_bindless_texture(id, gl_materials[m].tex_rma_handle, tex_rma->width(), tex_rma->height(), tex_rma->data());
+			gl_materials[m].rma = Color3f({ 1.0f, 1.0f, 1.0f });
+		}
+		else
+		{
+			GLuint id = 0;
+			GLubyte data[] = { 255, 255, 255, 255 };
+			create_bindless_texture(id, gl_materials[m].tex_rma_handle, 1, 1, data);
+			Vector3 rma = Vector3();
+			rma.x = material.second->roughness();
+			rma.y = material.second->metallic();
+			rma.z = 1.0f;
+		}
+
+		auto tex_normal = material.second->texture(Map::kNormal);
+		if (tex_normal)
+		{
+			GLuint id = 0;
+			create_bindless_texture(id, gl_materials[m].tex_normal_handle, tex_normal->width(), tex_normal->height(), tex_normal->data());
+			gl_materials[m].normal = Color3f({ 1.0f, 1.0f, 1.0f });
+		}
+		else
+		{
+			GLuint id = 0;
+			GLubyte data[] = { 255, 255, 255, 255 };
+			create_bindless_texture(id, gl_materials[m].tex_normal_handle, 1, 1, data);
+			gl_materials[m].normal = Color3f({ 0.0f, 0.0f, 1.0f });
+		}
+
+		m++;
+	}
+	GLuint ssbo_materials = 0;
+	glGenBuffers(1, &ssbo_materials);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_materials);
+	const GLsizeiptr gl_materials_size = sizeof(GLMaterial) * materials.size();
+	glBufferData(GL_SHADER_STORAGE_BUFFER, gl_materials_size, gl_materials, GL_STATIC_DRAW);
+	// bind the buffer to the binding point - 0 in this case (layout(location = 0) in the shader)
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_materials);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void Application::load_model(std::string file_name, GLuint& vao, GLuint& vbo, int& index_count, bool bindless = true) {
 	SceneGraph scene;
 	MaterialLibrary materials;
 
@@ -348,6 +432,12 @@ void Application::load_model(std::string file_name, GLuint& vao, GLuint& vbo, in
 		return;
 	}
 	index_count = triangles.size() * 6;
+
+	// init textures
+	if(bindless)
+	{
+		create_bindless_material(materials);
+	}
 }
 
 void Application::check_viewport() {
@@ -514,7 +604,7 @@ void Application::load_skydome_texture() {
 void Application::run()
 {
 	//std::string file_name = "../../../data/adjacent_triangles.obj";
-	load_model("../../../data/sphere/geosphere.obj", sky_vao, sky_vbo, sky_index_count);
+	load_model("../../../data/sphere/geosphere.obj", sky_vao, sky_vbo, sky_index_count, FALSE);
 	//model_index_count = sky_index_count;
 	//model_vao = sky_vao;
 	load_model("../../../data/piece_02/piece_02.obj", model_vao, model_vbo, model_index_count);
