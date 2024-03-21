@@ -41,7 +41,9 @@ vec2 to_spherical(vec3 input_vector){
 
     float theta = acos(input_vector.z);
     float phi = atan(input_vector.y, input_vector.x);
-    if (input_vector.y < 0)
+    if (input_vector.y < 0){
+        phi = phi + PI * 2;
+    }
 
     theta = theta / PI;
     phi = phi / (2 * PI);
@@ -64,9 +66,9 @@ void main( void )
     m_diffuse = m_diffuse * diffuse_color;
 
     // normal from material
-    uvec2 md_normal_id = materials[material_index].tex_normal;
-	vec3 m_normal_texture = texture( sampler2D(md_normal_id), texcoord ).rgb;
-    vec4 m_normal = vec4(material.normal * m_normal_texture, 1.0f);
+    //uvec2 md_normal_id = materials[material_index].tex_normal;
+	//vec3 m_normal_texture = texture( sampler2D(md_normal_id), texcoord ).rgb;
+    //vec4 m_normal = vec4(material.normal * m_normal_texture, 1.0f);
 
     // rma from material
     uvec2 md_rma_id = materials[material_index].tex_rma;
@@ -88,7 +90,7 @@ void main( void )
     //vec3 F = vec3(0.2, 0.2, 0.2);
     vec3 F0 = mix(vec3(0.04), m_diffuse.rgb, metalness);
     // TODO: omega h?
-    vec3 omega_h = world_normal.xyz;
+    vec3 omega_h = world_normal;
     float theta_h = max(dot(omega_h, omega_o), 0.0);
     vec3 F = F0 + (1.0 - F0) * pow(1.0 - theta_h, 5.0);
     vec3 Fd = (vec3(1.0) - F) * (1.0 - metalness);
@@ -103,9 +105,12 @@ void main( void )
 
     // 01 - without material
     //FragColor = diffuse_color + specular_color;
-    // 02 - just material diffuse tex_diffuse
-    FragColor = m_diffuse;
-
-    //FragColor = (m_diffuse + specular_color) * ambient_occlusion;
+    // 02 - just material rma
     //FragColor = m_rma;
+    // 03 - just material diffuse tex_diffuse
+    //FragColor = m_diffuse;
+    // 04 - material diffuse + specular with prefiltered_color
+    FragColor = (m_diffuse + specular_color);
+    // 05 - material diffuse + specular with prefiltered_color + normal
+    //FragColor = (m_diffuse + specular_color) * ambient_occlusion;
 }

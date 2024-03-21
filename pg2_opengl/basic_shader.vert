@@ -25,7 +25,8 @@ out int material_index;
 
 void main( void )
 {
-	world_position = vec4(_normal, 1.0f);
+	//world_position = vec4(_normal, 1.0f);
+	world_position = _model_matrix * vec4(_position, 1.0f);
 	world_normal = normalize(transpose(inverse(mat3(_model_matrix))) * _normal);
 	camera_pos = _camera_pos;
 
