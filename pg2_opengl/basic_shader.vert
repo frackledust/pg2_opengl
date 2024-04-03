@@ -22,18 +22,33 @@ out vec3 frag_color;
 out vec2 texcoord;
 out vec3 tangent;
 out int material_index;
+out mat3 TBN;
 
 void main( void )
 {
-	//world_position = vec4(_normal, 1.0f);
 	world_position = _model_matrix * vec4(_position, 1.0f);
-	world_normal = normalize(transpose(inverse(mat3(_model_matrix))) * _normal);
 	camera_pos = _camera_pos;
 
 	frag_color = _color;
-	texcoord = _texcoord;
+	texcoord = vec2(_texcoord.x, 1.0f - _texcoord.y);
 	tangent = _tangent;
 	material_index = _material_index;
+
+	mat3 normalMat = transpose(inverse(mat3(_model_matrix)));
+	world_normal = normalize(normalMat * _normal);
+
+	// gram schmidt orthonormalization
+	vec3 N = normalize(world_normal);
+	tangent = normalize(tangent);
+	vec3 T = normalize(tangent - dot(tangent, N) * N);
+	vec3 B = normalize(cross(N, T));
+
+	// TBN matrix
+	T = normalize(vec3(normalMat * T));
+	B = normalize(vec3(normalMat * B));
+	N = normalize(vec3(normalMat * N));
+
+	TBN = mat3(T, B, N);
 
 	gl_Position = _P * _model_matrix * vec4(_position, 1.0f); // model-space -> clip-space
 }
